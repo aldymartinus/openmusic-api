@@ -1,7 +1,8 @@
 /* eslint-disable require-jsdoc */
 const {nanoid} = require('nanoid');
 const {Pool} = require('pg');
-const {InvariantError, NotFoundError} = require('../../exceptions');
+const InvariantError = require('../../exceptions/InvariantError');
+const NotFoundError = require('../../exceptions/NotFoundError');
 
 class AlbumService {
   constructor() {
@@ -12,7 +13,7 @@ class AlbumService {
     const id = `album-${nanoid(16)}`;
 
     const query = {
-      text: 'INSERT INTO albums VALUES($1, $2, $3) RETURNING ID',
+      text: 'INSERT INTO albums VALUES($1, $2, $3) RETURNING id',
       values: [id, name, year],
     };
 
@@ -35,13 +36,12 @@ class AlbumService {
       values: [id],
     };
 
-    const res = await this._pool(query);
+    const res = await this._pool.query(query);
 
-    if (!res.row.length) {
+    if (!res.rows.length) {
       throw new NotFoundError('Album tidak ditemukan');
     }
-
-    return res.rows;
+    return res.rows[0];
   }
 
   async editAlbumById(id, {name, year}) {

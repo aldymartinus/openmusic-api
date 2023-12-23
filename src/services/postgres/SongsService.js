@@ -2,7 +2,9 @@
 /* eslint-disable require-jsdoc */
 const {nanoid} = require('nanoid');
 const {Pool} = require('pg');
-const {InvariantError, NotFoundError} = require('../../exceptions');
+const InvariantError = require('../../exceptions/InvariantError');
+const NotFoundError = require('../../exceptions/NotFoundError');
+const mapDBToModel = require('../../utils');
 
 class SongService {
   constructor() {
@@ -13,7 +15,7 @@ class SongService {
     const id = `song-${nanoid(16)}`;
 
     const query = {
-      text: 'INSERT INTO albums VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING ID',
+      text: 'INSERT INTO songs VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING ID',
       values: [id, title, year, genre, performer, duration, albumId],
     };
 
@@ -21,13 +23,12 @@ class SongService {
     if (!res.rows[0].id) {
       throw new InvariantError('Lagu gagal ditambahkan');
     }
-
     return res.rows[0].id;
   }
 
   async getSongs() {
     const res = await this._pool.query('SELECT * FROM songs');
-    return res.rows();
+    return res.rows.map(mapDBToModel);
   }
 
   async getSongById(id) {
@@ -36,32 +37,31 @@ class SongService {
       values: [id],
     };
 
-    const res = await this._pool(query);
+    const res = await this._pool.query(query);
 
-    if (!res.row.length) {
+    if (!res.rows.length) {
       throw new NotFoundError('Lagu tidak ditemukan');
     }
-
-    return res.rows;
+    return res.rows[0];
   }
 
   async editSongById(id, {title, year, genre, performer, duration, albumId}) {
     const query = {
-      text: `UPDATE albums SET 
+      text: `UPDATE notes SET 
       title = $1, 
       year = $2, 
       genre = $3, 
       performer = $4, 
       duration = $5, 
-      albumId = $6,
+      albumId = $6 
       WHERE id = $7 RETURNING id`,
       values: [title, year, genre, performer, duration, albumId, id],
     };
 
-    const res = await this._pool.query(query);
+    const result = await this._pool.query(query);
 
-    if (!res.rows.length) {
-      throw new NotFoundError('Gagal memperbarui lagu, Id tidak ditemukan');
+    if (!result.rows.length) {
+      throw new NotFoundError('Gagal memperbarui lagu. Id tidak ditemukan');
     }
   }
 

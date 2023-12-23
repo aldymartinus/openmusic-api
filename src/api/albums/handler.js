@@ -35,7 +35,7 @@ class AlbumHandler {
     };
   }
 
-  async getAlbumByIdHandler() {
+  async getAlbumByIdHandler(req) {
     const {id} = req.params;
     const album = await this._service.getAlbumById(id);
 
@@ -44,6 +44,27 @@ class AlbumHandler {
       data: {
         album,
       },
+    };
+  }
+
+  async putAlbumByIdHandler(req) {
+    this._validator.validateAlbumPayload(req.payload);
+    const {id} = req.params;
+    await this._service.editAlbumById(id, req.payload);
+
+    return {
+      status: 'success',
+      message: 'Album berhasil diperbarui',
+    };
+  }
+
+  async deleteAlbumByIdHandler(req) {
+    const {id} = req.params;
+    await this._service.deleteAlbumById(id);
+
+    return {
+      status: 'success',
+      message: 'Album berhasil dihapus',
     };
   }
 }
