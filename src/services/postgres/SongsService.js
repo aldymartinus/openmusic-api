@@ -4,7 +4,6 @@ const {nanoid} = require('nanoid');
 const {Pool} = require('pg');
 const InvariantError = require('../../exceptions/InvariantError');
 const NotFoundError = require('../../exceptions/NotFoundError');
-const mapDBToModel = require('../../utils');
 
 class SongService {
   constructor() {
@@ -27,8 +26,17 @@ class SongService {
   }
 
   async getSongs() {
-    const res = await this._pool.query('SELECT * FROM songs');
-    return res.rows.map(mapDBToModel);
+    const res = await this._pool.query('SELECT id, title, performer FROM songs');
+    return res.rows;
+  }
+
+  async getSongsWithParams(title, performer) {
+    const query = {
+      text: `SELECT id, title, performer FROM songs WHERE title ILIKE $1 AND performer ILIKE $2`,
+      values: [title + '%', performer + '%'],
+    };
+    const res = await this._pool.query(query);
+    return res.rows;
   }
 
   async getSongById(id) {
@@ -39,7 +47,7 @@ class SongService {
 
     const res = await this._pool.query(query);
 
-    if (!res.rows.length) {
+    if (!res.rowCount) {
       throw new NotFoundError('Lagu tidak ditemukan');
     }
     return res.rows[0];
@@ -47,20 +55,20 @@ class SongService {
 
   async editSongById(id, {title, year, genre, performer, duration, albumId}) {
     const query = {
-      text: `UPDATE notes SET 
+      text: `UPDATE songs SET 
       title = $1, 
       year = $2, 
       genre = $3, 
       performer = $4, 
       duration = $5, 
-      albumId = $6 
+      "albumId" = $6 
       WHERE id = $7 RETURNING id`,
       values: [title, year, genre, performer, duration, albumId, id],
     };
 
     const result = await this._pool.query(query);
 
-    if (!result.rows.length) {
+    if (!result.rowCount) {
       throw new NotFoundError('Gagal memperbarui lagu. Id tidak ditemukan');
     }
   }
@@ -73,7 +81,7 @@ class SongService {
 
     const res = await this._pool.query(query);
 
-    if (!res.rows.length) {
+    if (!res.rowCount) {
       throw new NotFoundError('Lagu gagal dihapus, Id tidak ditemukan');
     }
   }

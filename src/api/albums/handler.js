@@ -38,6 +38,8 @@ class AlbumHandler {
   async getAlbumByIdHandler(req) {
     const {id} = req.params;
     const album = await this._service.getAlbumById(id);
+    const songs = await this._service.getSongList(id);
+    album.songs = songs;
 
     return {
       status: 'success',

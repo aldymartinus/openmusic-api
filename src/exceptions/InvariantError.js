@@ -1,3 +1,4 @@
+/* eslint-disable require-jsdoc */
 const ClientError = require('./ClientError');
 
 class InvariantError extends ClientError {

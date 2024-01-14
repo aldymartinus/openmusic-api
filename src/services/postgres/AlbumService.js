@@ -38,11 +38,21 @@ class AlbumService {
 
     const res = await this._pool.query(query);
 
-    if (!res.rows.length) {
+    if (!res.rowCount) {
       throw new NotFoundError('Album tidak ditemukan');
     }
     return res.rows[0];
   }
+
+  async getSongList(id) {
+    const query = {
+      text: 'SELECT id, title, performer FROM songs WHERE "albumId" = $1',
+      values: [id],
+    };
+    const res = await this._pool.query(query);
+
+    return res.rows;
+  };
 
   async editAlbumById(id, {name, year}) {
     const query = {
@@ -52,7 +62,7 @@ class AlbumService {
 
     const res = await this._pool.query(query);
 
-    if (!res.rows.length) {
+    if (!res.rowCount) {
       throw new NotFoundError('Gagal memperbarui album, Id tidak ditemukan');
     }
   }
@@ -65,7 +75,7 @@ class AlbumService {
 
     const res = await this._pool.query(query);
 
-    if (!res.rows.length) {
+    if (!res.rowCount) {
       throw new NotFoundError('Album gagal dihapus, Id tidak ditemukan');
     }
   }
