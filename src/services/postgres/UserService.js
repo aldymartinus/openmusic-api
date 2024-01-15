@@ -1,5 +1,6 @@
 /* eslint-disable require-jsdoc */
 const InvariantError = require('../../exceptions/InvariantError');
+const AuthenticationError = require('../../exceptions/AuthenticationError');
 const {nanoid} = require('nanoid');
 const bcryptjs = require('bcryptjs');
 const {Pool} = require('pg');
@@ -48,6 +49,25 @@ class UserService {
     if (!res.rowCount) throw new InvariantError('User tidak ditemukan');
 
     return res.rows[0];
+  }
+
+  async verifyUserCredential(username, password) {
+    const query = {
+      text: 'SELECT id, password FROM users WHERE username = $1',
+      values: [username],
+    };
+
+    const res = await this._pool.query(query);
+    const errMsg = 'Kredensial yang Anda berikan salah';
+
+    if (!res.rowCount) throw new AuthenticationError(errMsg);
+
+    const {id, password: hashedPassword} = res.rows[0];
+
+    const match = await bcryptjs.compare(password, hashedPassword);
+    if (!match) throw new AuthenticationError(errMsg);
+
+    return id;
   }
 }
 
