@@ -1,6 +1,8 @@
+/* eslint-disable max-len */
 require('dotenv').config();
 const Hapi = require('@hapi/hapi');
 const ClientError = require('./exceptions/ClientError');
+const Jwt = require('@hapi/jwt');
 
 // Album
 const albums = require('./api/albums');
@@ -17,10 +19,26 @@ const users = require('./api/users');
 const UserValidator = require('./validator/users');
 const UserService = require('./services/postgres/UserService');
 
+// Authentications
+const authentications = require('./api/authentications');
+const AuthenticationsService = require('./services/postgres/AuthenticationsService');
+const TokenManager = require('./tokenize/TokenManager');
+const AuthenticationsValidator = require('./validator/authentications');
+const AuthenticationError = require('./exceptions/AuthenticationError');
+
+// Playlists
+const PlaylistsService = require('./services/postgres/PlaylistService');
+const playlistValidator = require('./validator/playlists');
+const playlists = require('./api/playlists');
+const CollaborationService = require('./services/postgres/CollaborationsService');
+
 const init = async () => {
   const albumService = new AlbumService();
   const songService = new SongService();
-  const userService = new UserService();
+  const usersService = new UserService();
+  const authenticationsService = new AuthenticationsService();
+  const collaborationService = new CollaborationService();
+  const playlistsService = new PlaylistsService(songService, collaborationService);
 
   const server = Hapi.server({
     port: process.env.PORT,
@@ -30,6 +48,28 @@ const init = async () => {
         origin: ['*'],
       },
     },
+  });
+
+  await server.register([
+    {
+      plugin: Jwt,
+    },
+  ]);
+
+  server.auth.strategy('playlist_jwt', 'jwt', {
+    keys: process.env.ACCESS_TOKEN_KEY,
+    verify: {
+      aud: false,
+      iss: false,
+      sub: false,
+      maxAgeSec: process.env.ACCESS_TOKEN_AGE,
+    },
+    validate: (artifacts) => ({
+      isValid: true,
+      credentials: {
+        id: artifacts.decoded.payload.id,
+      },
+    }),
   });
 
   await server.register([
@@ -50,8 +90,24 @@ const init = async () => {
     {
       plugin: users,
       options: {
-        service: userService,
+        service: usersService,
         validator: UserValidator,
+      },
+    },
+    {
+      plugin: authentications,
+      options: {
+        authenticationsService,
+        usersService,
+        tokenManager: TokenManager,
+        validator: AuthenticationsValidator,
+      },
+    },
+    {
+      plugin: playlists,
+      options: {
+        service: playlistsService,
+        validator: playlistValidator,
       },
     },
   ]);
@@ -59,7 +115,17 @@ const init = async () => {
   server.ext('onPreResponse', (req, h) => {
     const {response} = req;
     if (response instanceof Error) {
+      console.log(response);
       if (response instanceof ClientError) {
+        const newResponse = h.response({
+          status: 'fail',
+          message: response.message,
+        });
+        newResponse.code(response.statusCode);
+        return newResponse;
+      }
+
+      if (response instanceof AuthenticationError) {
         const newResponse = h.response({
           status: 'fail',
           message: response.message,

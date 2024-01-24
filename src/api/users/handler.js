@@ -2,7 +2,7 @@ const autoBind = require('auto-bind');
 
 /* eslint-disable require-jsdoc */
 class userHandler {
-  constructor(validator, service) {
+  constructor(service, validator) {
     this._service = service;
     this._validator = validator;
     autoBind(this);
@@ -23,7 +23,7 @@ class userHandler {
     res.code(201);
     return res;
   }
-  async getUserHandler(req, h) {
+  async getUserHandler(req) {
     const {id} = req.params;
     const user = await this._service.getUser(id);
 

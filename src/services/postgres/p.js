@@ -1,21 +1,20 @@
-/* eslint-disable max-len */
 /* eslint-disable require-jsdoc */
-/* eslint-disable no-underscore-dangle */
-const {Pool} = require('pg');
-const {nanoid} = require('nanoid');
-const bcryptjs = require('bcryptjs');
 const InvariantError = require('../../exceptions/InvariantError');
 const AuthenticationError = require('../../exceptions/AuthenticationError');
+const {nanoid} = require('nanoid');
+const bcryptjs = require('bcryptjs');
+const {Pool} = require('pg');
 
-class UsersService {
+class UserService {
   constructor() {
     this._pool = new Pool();
   }
 
   async addUser(username, password, fullname) {
-    await this.verifyUsername(username);
+    this.verifyUsername(username);
+
     const id = `user-${nanoid(16)}`;
-    const hashedPassword = await bcryptjs.hash(password, 10);
+    const hashedPassword = bcryptjs.hash(password, 10);
 
     const query = {
       text: 'INSERT INTO users VALUES($1, $2, $3, $4) RETURNING id',
@@ -23,7 +22,6 @@ class UsersService {
     };
 
     const res = await this._pool.query(query);
-
     if (!res.rowCount) throw new InvariantError('User gagal ditambahkan');
 
     return res.rows[0].id;
@@ -34,23 +32,21 @@ class UsersService {
       text: 'SELECT username FROM users WHERE username = $1',
       values: [username],
     };
+
     const res = await this._pool.query(query);
 
-    if (res.rowCount) {
-      throw new InvariantError(
-          'Gagal menambahkan user. Username sudah digunakan.');
-    }
+    const errMsg = 'Gagal menambahkan user. Username sudah digunakan.';
+    if (res.rowCount > 0) throw new InvariantError(errMsg);
   }
 
-  async getUserById(userId) {
+  async getUserById(id) {
     const query = {
-      text: 'SELECT * FROM users WHERE id = $1',
-      values: [userId],
+      text: 'SELECT id, username, fullname from users WHERE id = $1',
+      values: [id],
     };
 
     const res = await this._pool.query(query);
-
-    if (!res.rowCount) throw new InvariantError('User tidak ditemukan', 404);
+    if (!res.rowCount) throw new InvariantError('User tidak ditemukan');
 
     return res.rows[0];
   }
@@ -62,15 +58,17 @@ class UsersService {
     };
 
     const res = await this._pool.query(query);
+    const errMsg = 'Kredensial yang Anda berikan salah';
 
-    if (!res.rowCount) throw new AuthenticationError('Kredensial yang Anda berikan salah');
+    if (!res.rowCount) throw new AuthenticationError(errMsg);
 
     const {id, password: hashedPassword} = res.rows[0];
+
     const match = await bcryptjs.compare(password, hashedPassword);
-    if (!match) throw new AuthenticationError('Kredensial yang Anda berikan salah');
+    if (!match) throw new AuthenticationError(errMsg);
 
     return id;
   }
 }
 
-module.exports = UsersService;
+module.exports = UserService;
