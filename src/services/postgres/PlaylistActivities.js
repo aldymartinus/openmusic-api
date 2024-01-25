@@ -22,7 +22,17 @@ class PlaylistActivitiesService {
     if (!res.rowCount) throw new InvariantError('Activity gagal ditambahkan');
   }
 
-  async getActivities() {}
+  async getActivities(playlistId) {
+    const query = {
+      text: 'SELECT * FROM playlist_song_activities WHERE playlist_id = $1',
+      values: [playlistId],
+    };
+
+    const res = await this._pool.query(query);
+    if (!res.rowCount) throw new InvariantError('Gagal mendapatkan activities');
+
+    return res.rows;
+  }
 }
 
 module.exports = PlaylistActivitiesService;

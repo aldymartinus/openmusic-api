@@ -90,6 +90,8 @@ class PlaylistsHandler {
       message: 'Lagu berhasil berhasil dihapus dari playlist',
     };
   }
+
+  async getActivitiesHandler(req) {}
 }
 
 module.exports = PlaylistsHandler;
