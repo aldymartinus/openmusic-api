@@ -40,7 +40,7 @@ class PlaylistsHandler {
 
   async deletePlaylistByIdHandler(req) {
     const {id: user} = req.auth.credentials;
-    const {playistId} = req.payload;
+    const {id: playistId} = req.params;
 
     await this._service.deletePlaylistById(playistId, user);
 
@@ -51,12 +51,13 @@ class PlaylistsHandler {
   }
 
   async postPlaylistSongHandler(req, h) {
+    const {id: user} = req.auth.credentials;
+
     this._validator.validatePlaylistSongPayload(req.payload);
     const {songId} = req.payload;
     const {id: playlistId} = req.params;
-    console.log(`payload: ${songId}, params: ${playlistId}`);
 
-    await this._service.addSongToPlaylist(playlistId, songId);
+    await this._service.addSongToPlaylist(playlistId, songId, user);
     const res = h.response({
       status: 'success',
       message: 'Lagu berhasil ditambahkan kedalam playlist',
@@ -68,12 +69,21 @@ class PlaylistsHandler {
   async getPlaylistsSongsHandler(req, h) {
     const {id: playlistId} = req.params;
     const {id: user} = req.auth.credentials;
-    const playlists = this._service.getListOfSongs(user, playlistId);
-
-    const res = h.responses({
+    const playlists = await this._service.getListOfSongs(user, playlistId);
+    const songs = playlists.map((song) => ({
+      id: song.id,
+      title: song.title,
+      performer: song.performer,
+    }));
+    const res = h.response({
       status: 'success',
       data: {
-        playlists,
+        playlist: {
+          id: playlistId,
+          name: playlists[0].name,
+          username: playlists[0].username,
+          songs,
+        },
       },
     });
     res.code(200);
@@ -82,8 +92,9 @@ class PlaylistsHandler {
 
   async deletePlaylistSongHandler(req) {
     const {id: playlistId} = req.params;
-    const {id: songId} = req.payload;
-    await this._service.deleteSongFromPlaylist(playlistId, songId);
+    const {id: user} = req.auth.credentials;
+    const {songId} = req.payload;
+    await this._service.deleteSongFromPlaylist(playlistId, songId, user);
 
     return {
       status: 'success',

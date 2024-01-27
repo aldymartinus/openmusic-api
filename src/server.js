@@ -30,7 +30,10 @@ const AuthenticationError = require('./exceptions/AuthenticationError');
 const PlaylistsService = require('./services/postgres/PlaylistService');
 const playlistValidator = require('./validator/playlists');
 const playlists = require('./api/playlists');
+
+// Collaborations
 const CollaborationService = require('./services/postgres/CollaborationsService');
+const collaborations = require('./api/collaborations');
 
 const init = async () => {
   const albumService = new AlbumService();
@@ -110,12 +113,19 @@ const init = async () => {
         validator: playlistValidator,
       },
     },
+    {
+      plugin: collaborations,
+      options: {
+        service: collaborationService,
+        playlists: playlistsService,
+        user: usersService,
+      },
+    },
   ]);
 
   server.ext('onPreResponse', (req, h) => {
     const {response} = req;
     if (response instanceof Error) {
-      console.log(response);
       if (response instanceof ClientError) {
         const newResponse = h.response({
           status: 'fail',
@@ -143,6 +153,7 @@ const init = async () => {
         message: 'telah terjadi kegagalan pada server kami',
       });
       newResponse.code(500);
+      console.log(response);
       return newResponse;
     }
 

@@ -3,20 +3,21 @@
 const {nanoid} = require('nanoid');
 const {Pool} = require('pg');
 const InvariantError = require('../../exceptions/InvariantError');
+const AuthorizationError = require('../../exceptions/AuthorizationError');
 
 class CollaborationsService {
   constructor() {
     this._pool = new Pool();
   }
 
-  async verifyPlaylistCollaborator(playlistId, songId) {
+  async verifyPlaylistCollaborator(playlistId, userId) {
     const query = {
-      text: 'SELECT * FROM collaborations WHERE playlist_id = $1, AND song_id = $2',
-      values: [playlistId, songId],
+      text: 'SELECT * FROM collaborations WHERE playlist_id = $1 AND user_id = $2',
+      values: [playlistId, userId],
     };
 
     const res = await this._pool.query(query);
-    if (!res.rowCount) throw new InvariantError('Kolaborasi gagal diverifikasi');
+    if (!res.rowCount) throw new AuthorizationError('Kolaborasi gagal diverifikasi');
   }
 
   async addCollaboration(playlistId, userId) {

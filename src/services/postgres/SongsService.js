@@ -4,6 +4,7 @@ const {nanoid} = require('nanoid');
 const {Pool} = require('pg');
 const InvariantError = require('../../exceptions/InvariantError');
 const NotFoundError = require('../../exceptions/NotFoundError');
+const BadRequestError = require('../../exceptions/BadRequestError');
 
 class SongService {
   constructor() {
@@ -87,14 +88,23 @@ class SongService {
   }
 
   async verifySongId(id) {
-    console.log(`value untuk param service - ${id}`);
     const query = {
       text: 'SELECT * from songs WHERE id = $1',
       values: [id],
     };
 
     const res = await this._pool.query(query);
-    if (!res.rowCount) throw new InvariantError('');
+    if (!res.rowCount) throw new NotFoundError('Lagu tidak valid');
+  }
+
+  async validateSongPayload(id) {
+    const query = {
+      text: 'SELECT * from songs WHERE id = $1',
+      values: [id],
+    };
+
+    const res = await this._pool.query(query);
+    if (!res.rowCount) throw new BadRequestError('Lagu tidak valid');
   }
 }
 
