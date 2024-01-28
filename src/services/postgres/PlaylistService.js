@@ -28,7 +28,11 @@ class PlaylistsService {
 
   async getPlaylists(username) {
     const query = {
-      text: 'SELECT * FROM playlists WHERE username = $1',
+      text: `
+      select playlists.id, playlists.name, users.username from playlists left join users on 
+      users.id = playlists.username left join collaborations on playlists.id = collaborations.playlist_id where 
+      playlists.username = $1 or collaborations.user_id = $1;
+      `,
       values: [username],
     };
 
@@ -37,7 +41,7 @@ class PlaylistsService {
   }
 
   async deletePlaylistById(id, username) {
-    await this.verifyPlaylistAccess(id, username);
+    await this.verifyPlaylistOwner(username, id);
     const query = {
       text: 'DELETE FROM playlists WHERE id = $1 RETURNING id',
       values: [id],
@@ -66,7 +70,6 @@ class PlaylistsService {
 
     const matchingId = idArr.filter((p) => p.id == playistId).length;
     const matchingUsername = usernameArr.filter((p) => p.username == username).length;
-    console.log(usernameArr, username);
 
     const errMsg = 'Anda tidak berhak mengakses resource ini';
     if (matchingId < 1) throw new NotFoundError('Playlist tidak ditemukan');
@@ -107,8 +110,9 @@ class PlaylistsService {
 
   async getListOfSongs(username, playlistId) {
     await this.verifyPlaylistAccess(playlistId, username);
+
     const query = {
-      text: `select name, users.username, songs.id, songs.title, songs.performer from 
+      text: `select name, songs.id, songs.title, songs.performer from 
       playlists left join playlist_songs on playlists.id = playlist_songs.playlist_id 
       left join songs on playlist_songs.song_id = songs.id 
       left join users on users.id = $1
@@ -117,7 +121,14 @@ class PlaylistsService {
       values: [username, playlistId],
     };
 
+    const playlistsUsername = await this._pool.query(`
+    select users.username from 
+    users left join playlists on 
+    users.id = playlists.username where playlists.id = $1
+    `, [playlistId]);
+
     const res = await this._pool.query(query);
+    res.rows[0].username = playlistsUsername.rows[0].username;
 
     if (!res.rowCount) throw new InvariantError('Playlist tidak valid');
     return res.rows;
