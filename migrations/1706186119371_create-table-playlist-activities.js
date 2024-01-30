@@ -29,11 +29,6 @@ exports.up = (pgm) => {
 
   pgm.addConstraint(
       'playlist_song_activities',
-      'unique_playlist_id',
-      'UNIQUE(playlist_id)',
-  );
-  pgm.addConstraint(
-      'playlist_song_activities',
       'fk_collaborations.playlist_id_playlists_id',
       'FOREIGN KEY(playlist_id) REFERENCES playlists(id) ON DELETE CASCADE',
   );

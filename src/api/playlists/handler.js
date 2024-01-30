@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 /* eslint-disable require-jsdoc */
 const autoBind = require('auto-bind');
 
@@ -58,6 +59,8 @@ class PlaylistsHandler {
     const {id: playlistId} = req.params;
 
     await this._service.addSongToPlaylist(playlistId, songId, user);
+    await this._service.addActivities(playlistId, user, songId, 'add');
+
     const res = h.response({
       status: 'success',
       message: 'Lagu berhasil ditambahkan kedalam playlist',
@@ -95,14 +98,26 @@ class PlaylistsHandler {
     const {id: user} = req.auth.credentials;
     const {songId} = req.payload;
     await this._service.deleteSongFromPlaylist(playlistId, songId, user);
-
+    await this._service.addActivities(playlistId, user, songId, 'delete');
     return {
       status: 'success',
       message: 'Lagu berhasil berhasil dihapus dari playlist',
     };
   }
 
-  async getActivitiesHandler(req) {}
+  async getActivitiesHandler(req) {
+    const {id: playlistId} = req.params;
+    const {id: user} = req.auth.credentials;
+    const activities = await this._service.getActivities(playlistId, user);
+
+    return {
+      status: 'success',
+      data: {
+        playlistId,
+        activities,
+      },
+    };
+  }
 }
 
 module.exports = PlaylistsHandler;

@@ -61,15 +61,13 @@ class PlaylistsService {
 
     const res = await this._pool.query(query);
 
-    const idArr = res.rows.map((p) => ({
+    const playlistArr = res.rows.map((p) => ({
       id: p.id,
-    }));
-    const usernameArr = res.rows.map((p) => ({
       username: p.username,
     }));
 
-    const matchingId = idArr.filter((p) => p.id == playistId).length;
-    const matchingUsername = usernameArr.filter((p) => p.username == username).length;
+    const matchingId = playlistArr.filter((p) => p.id == playistId).length;
+    const matchingUsername = playlistArr.filter((p) => p.username == username).length;
 
     const errMsg = 'Anda tidak berhak mengakses resource ini';
     if (matchingId < 1) throw new NotFoundError('Playlist tidak ditemukan');
@@ -146,6 +144,39 @@ class PlaylistsService {
     const res = await this._pool.query(query);
     const errMsg = 'Gagal menghapus lagu dari playlist';
     if (!res.rowCount) throw new InvariantError(errMsg);
+  }
+
+  async addActivities(playlistId, username, songId, action) {
+    const time = new Date().toISOString();
+    const id = `activities-${nanoid(16)}`;
+
+    const query = {
+      text: 'INSERT INTO playlist_song_activities VALUES($1, $2, $3, $4, $5, $6)',
+      values: [id, playlistId, songId, username, action, time],
+    };
+
+    const res = await this._pool.query(query);
+
+    if (!res.rowCount) throw new InvariantError('Activity gagal ditambahkan');
+  }
+
+  async getActivities(playlistId, username) {
+    await this.verifyPlaylistAccess(playlistId, username);
+    const query = {
+      text: `
+      select users.username, songs.title, playlist_song_activities.action, 
+      playlist_song_activities.time
+      from songs left join playlist_song_activities 
+      on playlist_song_activities.song_id = songs.id left join users on 
+      playlist_song_activities.user_id = users.id where playlist_id = $1;
+      `,
+      values: [playlistId],
+    };
+
+    const res = await this._pool.query(query);
+
+    if (!res.rowCount) throw new NotFoundError('Gagal mendapatkan activities');
+    return res.rows;
   }
 }
 

@@ -6,6 +6,7 @@ const {nanoid} = require('nanoid');
 const bcryptjs = require('bcryptjs');
 const InvariantError = require('../../exceptions/InvariantError');
 const AuthenticationError = require('../../exceptions/AuthenticationError');
+const NotFoundError = require('../../exceptions/NotFoundError');
 
 class UsersService {
   constructor() {
@@ -50,7 +51,7 @@ class UsersService {
 
     const res = await this._pool.query(query);
 
-    if (!res.rowCount) throw new InvariantError('User tidak ditemukan', 404);
+    if (!res.rowCount) throw new NotFoundError('User tidak ditemukan');
 
     return res.rows[0];
   }
