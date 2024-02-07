@@ -12,6 +12,9 @@ exports.up = (pgm) => {
       type: 'SMALLINT',
       notNull: true,
     },
+    coverUrl: {
+      type: 'TEXT',
+    },
   });
 };
 

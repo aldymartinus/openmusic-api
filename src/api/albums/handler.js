@@ -2,9 +2,11 @@
 const autoBind = require('auto-bind');
 
 class AlbumHandler {
-  constructor(service, validator) {
+  constructor(service, validator, uploadValidator, storageService) {
     this._service = service;
     this._validator = validator;
+    this._uploadValidator = uploadValidator;
+    this._storageService = storageService;
 
     autoBind(this);
   }
@@ -68,6 +70,62 @@ class AlbumHandler {
       status: 'success',
       message: 'Album berhasil dihapus',
     };
+  }
+
+  async postLikeToAlbumHandler(req, h) {
+    const {id: albumId} = req.params;
+    const {id: credentialId} = req.auth.credentials;
+
+    await this._service.likeAlbumById(albumId, credentialId);
+
+    const res = h.response({
+      status: 'success',
+      message: `${credentialId} menyukai sebuah album`,
+    });
+    res.code(201);
+
+    return res;
+  }
+
+  async getLikesFromAlbumHandler(req) {
+    const {id: albumId} = req.params;
+    const likes = await this._service.getAlbumLikesCountById(albumId);
+
+    return {
+      status: 'success',
+      data: {
+        likes,
+      },
+    };
+  }
+
+  async deleteLikeFromAlbumHandler(req) {
+    const {id: albumId} = req.params;
+    const {id: credentialId} = req.auth.credentials;
+    await this._service.deleteAlbumLikeById(albumId, credentialId);
+
+    return {
+      status: 'success',
+      message: 'Album batal disukai',
+    };
+  }
+
+  async postUploadAlbumCoverHandler(req, h) {
+    const data = req.payload;
+    const coverData = data.cover.hapi;
+    const {id: albumId} = req.params;
+    this._uploadValidator.validateImageHeaders(coverData.headers);
+    const filename = await this._storageService.writeFile(data, coverData);
+    const url = `http://${process.env.HOST}:${process.env.PORT}/upload/images/${filename}`;
+    await this._service.addCoverUrlToAlbum(albumId, url);
+
+    const res = h.response({
+      status: 'success',
+      message: 'Sampul berhasil diunggah',
+    });
+    res.code(201);
+
+    return res;
   }
 }
 

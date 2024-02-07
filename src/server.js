@@ -3,10 +3,12 @@ require('dotenv').config();
 const Hapi = require('@hapi/hapi');
 const ClientError = require('./exceptions/ClientError');
 const Jwt = require('@hapi/jwt');
+const path = require('path');
 
 // Album
 const albums = require('./api/albums');
 const AlbumService = require('./services/postgres/AlbumService');
+const UploadValidator = require('./validator/uploads');
 
 // Songs
 const songs = require('./api/songs');
@@ -35,8 +37,16 @@ const playlists = require('./api/playlists');
 const CollaborationService = require('./services/postgres/CollaborationsService');
 const collaborations = require('./api/collaborations');
 
+// Cache
+const CacheService = require('./services/redis/CacheService');
+
+// Storage
+const StorageService = require('./services/storage/StorageService');
+
 const init = async () => {
-  const albumService = new AlbumService();
+  const cacheService = new CacheService();
+  const storageService = new StorageService(path.resolve(__dirname, 'api/uploads/file/images'));
+  const albumService = new AlbumService(cacheService);
   const songService = new SongService();
   const usersService = new UserService();
   const authenticationsService = new AuthenticationsService();
@@ -59,7 +69,7 @@ const init = async () => {
     },
   ]);
 
-  server.auth.strategy('playlist_jwt', 'jwt', {
+  server.auth.strategy('openmusic_jwt', 'jwt', {
     keys: process.env.ACCESS_TOKEN_KEY,
     verify: {
       aud: false,
@@ -81,6 +91,8 @@ const init = async () => {
       options: {
         service: albumService,
         validator: AlbumValidator,
+        uploadValidator: UploadValidator,
+        storageService: storageService,
       },
     },
     {
